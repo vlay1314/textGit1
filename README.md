@@ -17,3 +17,6 @@
   // controls = new OrbitControls(camera, renderer.domElement);
   // controls.enableDamping = true;
   // controls.target.set(0, 0, 0);
+![image](https://github.com/vlay1314/threejs3D-/blob/main/iShot_2022-09-27_10.24.33.gif)
+
+![image](https://github.com/vlay1314/threejs3D-/blob/main/iShot_2022-09-27_10.40.03.gif)
