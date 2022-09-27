@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D看房</title>
+    <style>
+        #container {
+            margin: 0px;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .laber_name {
+            color: rgb(0, 255, 255);
+            width: 100px;
+            height: 30px;
+            font-size: 14px;
+            padding: 15px;
+            /* background: url(assets/textures/msg-bg.png) no-repeat; */
+            background-color: rgba(0, 0, 0, 0.5);
+            background-size: cover;
+            border-radius: 4%;
+        }
+
+        .laber_name::after {
+            content: "";
+            width: calc(100% + 22px);
+            height: 39px;
+            background-position: 0 0;
+            position: absolute;
+            bottom: -40px;
+            left: -22px;
+            /* background: url(assets/textures/corner.png) no-repeat; */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container"></div>
+
+    <script type="importmap">
+        {
+            "imports":{
+                "three":"./libs/three.module.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from './libs/OrbitControls.js';
+        import { RGBELoader } from './libs/RGBELoader.js';
+        import { CSS2DRenderer, CSS2DObject } from './libs/CSS2DRenderer.js';
+        import { TWEEN } from './libs/tween.module.min.js';
+
+        var pointLabel, camera, controls;
+        var tween;
+
+        const container = document.getElementById('container');
+        // 初始化场景
+        const scene = new THREE.Scene();
+        // 初始化相机
+        camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        // 设置相机位置
+        camera.position.x = 0;
+        camera.position.y = 0;
+        camera.position.z = 0.1;
+
+        // 初始化渲染器
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        var labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = 0;
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // 新建标签
+        function createLableObj(text, vector) {
+            let laberDiv = document.createElement('div');//创建div容器
+            laberDiv.className = 'laber_name';
+            laberDiv.id = 'laberId';
+            laberDiv.innerText = text + '\n' + "余量：123";
+            let pointLabel = new CSS2DObject(laberDiv);
+            pointLabel.position.set(vector.x, vector.y, vector.z);
+            return pointLabel;
+        }
+
+        const render = () => {
+            TWEEN.update();
+            // controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+            requestAnimationFrame(render);
+        };
+
+        //添加球
+        const geometry = new THREE.SphereGeometry(10, 40, 40);
+        const loader = new RGBELoader();
+        loader.load("./hdr/11hdr.hdr", (texture) => {
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const sphere = new THREE.Mesh(geometry, material);
+            sphere.geometry.scale(1, 1, -1);
+            sphere.name = "物体";
+            sphere.position.set(0, 0, 0);
+            scene.add(sphere);
+        });
+
+        // 添加球2
+        const geometry2 = new THREE.SphereGeometry(10, 40, 40);
+        // const loader2 = new RGBELoader();
+        const loader2 = new THREE.TextureLoader();
+        loader2.load("./hdr/1.jpg", (texture) => {
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const sphere = new THREE.Mesh(geometry2, material);
+            sphere.geometry.scale(1, 1, -1);
+            sphere.name = "物体2";
+            sphere.position.set(20, 0, 0);
+            scene.add(sphere);
+        });
+
+        // 添加控制器
+        // controls = new OrbitControls(camera, renderer.domElement);
+        // controls.enableDamping = true;
+        // controls.target.set(0, 0, 0);
+        container.appendChild(renderer.domElement);
+        render();
+
+        //台灯坐标点 x: 4.681439945350212 y: -0.5272706600360021 z: 1.607439997249297
+        createClickButton(10, 10, 0.01, 0.5, 4.681439945350212, -0.5272706600360021, 1.607439997249297, "台灯");
+        //电视坐标点Vector3 {x: -6.002445361352734, y: 0.7609046789933294, z: 7.944562725897698}
+        createClickButton(10, 10, 0.01, 0.45, -5.002445361352734, 0.7609046789933294, 6.444562725897698, "电视");
+
+        window.addEventListener('click', onDocumentMouseMove, false);
+
+        //添加点击监听事件
+        function onDocumentMouseMove(event) {
+            var raycaster = new THREE.Raycaster();
+            var vector = new THREE.Vector2((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
+            raycaster.setFromCamera(vector, camera);
+            let intersects = raycaster.intersectObjects(scene.children);
+            if (intersects.length > 0) {// 判断参数[boxMesh]中模型对象是否与射线相交
+                console.log(intersects[0].point, "===");
+                intersects.forEach(function (e) {
+                    var obj = e.object;
+                    console.log(obj);
+                    // 判断相交的是否是精灵对象并且是对应标签的名称，如果是鼠标变小手
+                    // if (obj instanceof THREE.Sprite && obj.name.indexOf("bofang") > -1)
+                    if (obj instanceof THREE.Mesh && obj.name.indexOf("台灯") > -1) {
+                        //先移除旧的label,避免重复创建造成重叠
+                        scene.remove(pointLabel);
+                        pointLabel = createLableObj(obj.name, intersects[0].point);
+                        scene.add(pointLabel);
+                    }
+                    if (obj instanceof THREE.Mesh && obj.name.indexOf("电视") > -1) {
+                        console.log("点击电视按钮");
+                        //相机当前的位置
+                        let current1 = new THREE.Vector3();
+                        current1 = camera.position;
+                        //当前的controls的target
+                        let current2 = new THREE.Vector3();
+                        // current2 = controls.target;
+                        //相机的目标位置
+                        let target1 = new THREE.Vector3(18, 0, 0.2);
+                        //新的controls的target
+                        let target2 = new THREE.Vector3(18, 0, 0.1);
+
+                        var tween = new TWEEN.Tween(current1).to(target1, 2000).easing(TWEEN.Easing.Quadratic.InOut);
+                        // controls.target = new THREE.Vector3(target1.x, target1.y, target1.z);
+                        tween.onUpdate((object) => {
+                            //修改相机位置
+                            camera.lookAt(0, 0, 0);
+                            // controls.target.set(target2.x, target2.y, target2.z);
+                            // controls.update();
+                            camera.updateProjectionMatrix();
+                        });
+                        tween.onComplete((object) => {
+
+                        });
+                        tween.start();
+                    }
+                })
+        }
+        }
+        let isMouseDown = false;
+         // 监听鼠标按下事件
+  window.addEventListener(
+    "mousedown",
+    () => {
+      isMouseDown = true;
+    },
+    false
+  );
+  // 监听鼠标抬起事件
+  window.addEventListener(
+    "mouseup",
+    () => {
+      isMouseDown = false;
+    },
+    false
+  );
+  // 监听鼠标移动事件
+  window.addEventListener(
+    "mousemove",
+    (e) => {
+      if (isMouseDown) {
+        camera.rotation.y += (e.movementX / window.innerWidth) * Math.PI;
+        camera.rotation.x += (e.movementY / window.innerHeight) * Math.PI;
+      }
+    },
+    false
+  );
+
+        /**
+         * @description: 创建播放按钮
+         * @param {*} width 宽度
+         * @param {*} height 高度
+         * @param {*} depth 深度
+         * @param {*} angle 角度
+         * @param {*} x 坐标
+         * @param {*} y 坐标
+         * @param {*} z 坐标
+         * @param {*} name 物体名称
+         * @return {*}
+         */
+        function createClickButton(width, height, depth, angle, x, y, z, name) {
+            var loader = new THREE.TextureLoader();
+            loader.load("./assets/tanhao.png", function (texture) {
+                var windowgeometry = new THREE.BoxGeometry(width, height, depth);
+                var windowmaterial = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true
+                });
+                windowmaterial.opacity = 1.0;
+                windowgeometry.transparent = true;
+                windowgeometry.scale(0.04, 0.04, 0.04);
+                var window = new THREE.Mesh(windowgeometry, windowmaterial);
+                window.position.set(x, y, z);
+                window.rotation.y += angle * Math.PI;//- 逆时针旋转，+顺时针
+                window.name = name;
+                scene.add(window);
+            });
+            window.addEventListener('click', onDocumentMouseMove, false);
+        }
+    </script>
+</body>
+
+</html>
